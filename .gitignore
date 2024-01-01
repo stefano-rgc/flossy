@@ -3,11 +3,14 @@
 # but not these ones
 !.gitignore
 !README.md
-!example
-!flossy/flossy.py
-!flossy/example.py
 !setup.py
+!flossy
 
+# Ignore everything
+flossy/*
+# but not these ones
+!flossy/example.py
+!flossy/flossy.py
 # but not these ones
 !flossy/example_data/pg/pg_tic38515566.csv
 !flossy/example_data/pg/pg_tic141479660.csv
