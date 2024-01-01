@@ -4,6 +4,7 @@
 !.gitignore
 !README.md
 !flossy/flossy.py
+!flossy/example.py
 !setup.py
 
 # but not these ones
