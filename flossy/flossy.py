@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import pyautogui
 import webbrowser
 from numba.experimental import jitclass
@@ -22,13 +23,17 @@ from scipy.optimize import minimize
 from scipy.optimize import BFGS
 from astropy import units as u
 
-import tkinter as tk
-# from tkinter import simpledialog
-from tkinter.simpledialog import askstring
-from tkinter.messagebox import showinfo
-
 import matplotlib as mpl
-mpl.use('tkagg')
+# mpl.use('tkagg')
+# mpl.use('Qt5Agg')
+
+# import tkinter as tk
+# # from tkinter import simpledialog
+# from tkinter.simpledialog import askstring
+# from tkinter.messagebox import showinfo
+
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextBrowser, QVBoxLayout, QWidget, QFileDialog, QMessageBox
+from PyQt5.QtCore import Qt
 
 def period_for_dP_plot(periods, mode='middle'): 
     """Return the array of periods with one less element plot the period spacings. 
@@ -47,16 +52,12 @@ def period_for_dP_plot(periods, mode='middle'):
         List[float]:
             An array of periods with one less element than the input array.
     """
-
     if mode == 'middle':
         return (periods[1:]+periods[:-1])/2.
-
     elif mode == 'right':
         return periods[1:]
-
     elif mode == 'left':
         return periods[:-1]
-
     else:
         raise ValueError(f'`mode` is: {mode}. It has to be one of the following values: "middle", "right", "left".')
 
@@ -975,353 +976,159 @@ class flossyGUI:
         self.buttons.dp_resolution.label.set_text(text)
         self.main_fig.canvas.draw_idle()
 
+    def populate_help_content(self, text_browser):
+        # You can define your help content here. For example:
+        help_content = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Help</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: lightgray;
+            line-height: 1.6;
+        }
+        .head {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            border-bottom: 2px solid black;
+            padding-bottom: 5px;
+        }
+        .bold {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .underline {
+            font-size: 18px;
+            text-decoration: underline;
+        }
+        .monospaced, .monospaced_underline {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .monospaced_underline {
+            text-decoration: underline;
+        }
+        .bullet1, .bullet1bold, .bullet2, .bullet2bold, .bullet3 {
+            font-size: 18px;
+            margin-left: 20px;
+        }
+        .bullet1bold, .bullet2bold {
+            font-weight: bold;
+        }
+        .bullet2, .bullet2bold {
+            margin-left: 40px;
+        }
+        .bullet3 {
+            margin-left: 60px;
+        }
+        .paper, .zenodo {
+            color: blue;
+            text-decoration: underline;
+        }
+        .code-snippet {
+            background-color: #eee;
+            border-left: 3px solid #f36d33;
+            padding: 0.5em;
+            margin: 1em 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="head">1. Leyend</div>
+    <div class="bullet1"><span class="underline">Black triangles, circles and lines</span>: Periods considered for the fit.</div>
+    <div class="bullet1"><span class="underline">Grey triangles, circles and lines</span>: Periods not considered for the fit.</div>
+    <div class="bullet1"><span class="underline">Red stars, circles and lines</span>: Periods in the linear Period Spacing Pattern (PSP).</div>
+    <div class="bullet1"><span class="underline">Yellow/gold circle and line</span>: Location of P0 and/or dP0.</div>
+    <div class="bullet1"><span class="underline">Green triangles</span>: Denote observed periods that are consistent with fitted PSP within the frequency resolution.</div>
+    <div class="bullet1"><span class="underline">Purple vertical lines</span>: Period spacing is unresolved.</div>
+    <div class="bullet1"><span class="underline">S</span>: Cost function of the fit. Taken from Garcia et al. 2022 (<a href="https://doi.org/10.1051/0004-6361/202141926" class="paper">link</a>).</div>
+    <div class="bullet1"><span class="underline">Residuals</span>: Vanilla expression <span class="monospaced">np.sum(np.abs(p-PSP.p).min() for p in p_obs)</span>.</div>
+
+    <div class="head">2. Clicker mode</div>
+    <div class="bullet1bold">Periodogram</div>
+    <div class="bullet2"><span class="monospaced_underline">Left mouse button</span>: Adds a comb period from the right (left) when clicking to the right (left) of P0.</div>
+    <div class="bullet2"><span class="monospaced_underline">Right mouse button</span>: Removes a comb period from right (left) when clicking to the right (left) of P0.</div>
+    <div class="bullet2"><span class="monospaced_underline">Center mouse button</span>: Adds/removes five comb periods when clicking to the left/right of leftmost comb's period.</div>
+    <div class="bullet2"><span class="monospaced_underline">Center mouse button</span>: Adds/removes five comb periods when clicking to the right/left of rightmost comb's period.</div>
+
+    <div class="bullet1bold">Period spacing</div>
+    <div class="bullet2"><span class="monospaced_underline">Left mouse button</span>: Set comb's P0 and dP0.</div>
+    <div class="bullet2"><span class="monospaced_underline">Right mouse button</span>: Set comb's slope (Sigma).</div>
+
+    <div class="bullet1bold">Echelle diagram</div>
+    <div class="bullet2"><span class="monospaced_underline">Left mouse button</span>: If on a period, adds/removes it from the set of observations to be fitted to the comb.</div>
+
+    <div class="bullet1bold">Top triangles</div>
+    <div class="bullet2"><span class="monospaced_underline">Left mouse button</span>: If on a triangle, adds/removes the corresponding period from the set of observations to be fitted to the comb.</div>
+
+    <div class="bullet1bold">Cost function</div>
+    <div class="bullet2"><span class="monospaced_underline">Left mouse button</span>: Set new values for the comb's parameters.</div>
+
+    <div class="head">3. Spanner mode</div>
+    <div class="bullet1bold">Periodogram</div>
+    <div class="bullet2"><span class="monospaced_underline">Horizontal span with the left mouse button</span>: Select the observations to be fitted to the comb and determine the range of the P0 slider.</div>
+
+    <div class="bullet1bold">Period spacing</div>
+    <div class="bullet2"><span class="monospaced_underline">Vertical span with the left mouse button</span>: Determine the range of the dP0 and modulo sliders.</div>
+
+    <div class="head">4. Sliders</div>
+    <div class="bullet1"><span class="underline">P0</span>: Sets the comb's P0.</div>
+    <div class="bullet1"><span class="underline">dP0</span>: Sets the comb's dP0.</div>
+    <div class="bullet1"><span class="underline">Sigma</span>: Sets the comb's Sigma (slope).</div>
+    <div class="bullet1"><span class="underline">Echelle ΔP</span>: Sets the divisor of the x-axis of the echelle diagram.</div>
+    <div class="bullet1"><span class="underline">Amplitude threshold (%)</span>: Sets the threshold for the periods' amplitude to be fitted.</div>
+    <div class="bullet2">* Given a set of periods to fit, a value 0.2 will remove from the set periods with amplitude less than 20% of the maximum amplitude in the set.</div>
+
+    <div class="head">5. Buttons</div>
+    <div class="bullet1"><span class="underline">Fit</span>: Fit the PSP (comb of vertical red lines) to the selected observations (black triangles and black vertical dashed lines).</div>
+    <div class="bullet2">* Note that the fit is performed on the period space and not on the period spacing space. Therefore, missing modes will not impact the fit.</div>
+    <div class="bullet2">* The fit uses the following bounded parameters by default (see variable `use_bounded_fit`):</div>
+    <div class="bullet3">- P0 ∈ [PSP.P0 - Δ, PSP.P0 + Δ], where Δ = PSP.dP0/2</div>
+    <div class="bullet3">- dP0 ∈ [PSP.dP0/2, 2*PSP.dP0]</div>
+    <div class="bullet3">- Sigma ∈ [PSP.Sigma - Δ, PSP.Sigma + Δ], where Δ = 0.15</div>
+    <div class="bullet1"><span class="underline">Undo</span>: Set the PSP parameters to the values previous to the press of the Fit button.</div>
+    <div class="bullet1"><span class="underline">Save</span>: Save fit results generated by the Fit button (see Saved files section below).</div>
+    <div class="bullet2">* Note that fit results are deleted every time the user changes the PSP parameters or the observations to fit.</div>
+    <div class="bullet1"><span class="underline">Clicker ON/OFF</span>: Enable/disable clicker mode (see Clicker mode section above).</div>
+    <div class="bullet1"><span class="underline">Spanner ON/OFF</span>: Enable/disable spanner mode (see
+</body>
+</html>
+        '''
+        text_browser.setHtml(help_content)
+
     def help(self, event):
         """Shows a help message when the user clicks on the GUI help button.""" 
-                
-        def create_tags():
-            """Create tags for the text widget."""
-            text.tag_config("head", font=("Arial", 24, "bold"))
-            text.tag_config("bold", font=("Arial", 18, "bold"))
-            text.tag_config("underline", font=("Arial", 18), underline=True)
-            text.tag_config("monospaced", font=("Courier", 18))
-            text.tag_config("monospaced_underline", font=("Courier", 18), underline=True)
-            text.tag_config("bullet1", font=("Arial", 18), lmargin1=20, lmargin2=20)
-            text.tag_config("bullet1bold", font=("Arial", 18, "bold"), lmargin1=20, lmargin2=20)
-            text.tag_config("bullet2", font=("Arial", 18), lmargin1=40, lmargin2=40)
-            text.tag_config("bullet2bold", font=("Arial", 18, "bold"), lmargin1=40, lmargin2=40)
-            text.tag_config("bullet3", font=("Arial", 18), lmargin1=60, lmargin2=60)
-            text.tag_config("paper", foreground="blue", underline=True)
-            def link_to_paper(event):
-                webbrowser.open_new("https://doi.org/10.1051/0004-6361/202141926")
-            text.tag_bind("paper", "<Button-1>", link_to_paper)
-            text.tag_config("zenodo", foreground="blue", underline=True)
-            def link_to_zenodo(event):
-                webbrowser.open_new("https://zenodo.org/record/6320990")
-            text.tag_bind("zenodo", "<Button-1>", link_to_zenodo)
 
-        def legend():
-            '''Create legend section'''
-            text.insert(tk.INSERT, '1. Leyend\n\n', "head")
-            ## Black
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Black triangles, circles and lines', "underline")
-            text.insert(tk.INSERT, ': Periods considered for the fit.\n\n')
-            ## Grey
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Grey triangles, circles and lines', "underline")
-            text.insert(tk.INSERT, ': Periods not considered for the fit.\n\n')
-            ## Red
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Red stars, circles and lines', "underline")
-            text.insert(tk.INSERT, ': Periods in the linear Period Spacing Pattern (PSP).\n\n')
-            ## Yellow/gold
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Yellow/gold circle and line', "underline")
-            text.insert(tk.INSERT, ': Location of P0 and/or dP0.\n\n')
-            ## Green
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Green triangles', "underline")
-            text.insert(tk.INSERT, ': Denote observed periods that are consistent with fitted PSP within the frequency resolution.\n\n')
-            ## Purple
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Purple vertical lines', "underline")
-            text.insert(tk.INSERT, ': Period spacing is unresolved.\n\n')
-            ## S
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'S', "underline")
-            text.insert(tk.INSERT, ': Cost function of the fit. Taken from Garcia et al. 2022 (')
-            text.insert(tk.INSERT, 'https://doi.org/10.1051/0004-6361/202141926', 'paper')
-            text.insert(tk.INSERT, ').\n\n')
-            ## Residuals
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Residuals', "underline")
-            text.insert(tk.INSERT, ': Vanilla expression ')
-            text.insert(tk.INSERT, '`np.sum(np.abs(p-PSP.p).min() for p in p_obs)`\n\n', 'monospaced')
-            text.insert(tk.INSERT, '', "bullet1")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def clicker_mode():
-            '''Create Clicker mode section'''
-            text.insert(tk.INSERT, '2. Clicker mode', "head")
-            text.insert(tk.INSERT, ' (interactive mode enabled on axes below)\n\n')
-            ## Periodogram
-            text.insert(tk.INSERT, 'Periodogram\n\n', "bullet1bold")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ': Adds a comb period from the right (left) when clicking to the right (left) of P0.\n\n')
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Right mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ': Removes a comb period from right (left) when clicking to the right (left) of P0.\n\n')
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Center mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Adds/removes five comb periods when clicking to the left/right of leftmost comb's period.\n\n")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Center mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Adds/removes five comb periods when clicking to the right/left of rightmost comb's period.\n\n")
-            text.insert(tk.INSERT, '\n')
-            ## Period spacing
-            text.insert(tk.INSERT, 'Period spacing\n\n', "bullet1bold")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Set comb's P0 and dP0.\n\n")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Right mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Set comb's slope (Sigma).\n\n")
-            text.insert(tk.INSERT, '\n')
-            ## Echelle diagram
-            text.insert(tk.INSERT, 'Echelle diagram\n\n', "bullet1bold")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": If on a period, adds/removes it from the set of observations to be fitted to the comb.\n\n")
-            text.insert(tk.INSERT, '\n')
-            ## Top triangles
-            text.insert(tk.INSERT, 'Top triangles', "bullet1bold")
-            text.insert(tk.INSERT, ' (above periodogram and below sliders)\n\n')
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": If on a triangle, adds/removes the corresponding period from the set of observations to be fitted to the comb.\n\n")
-            text.insert(tk.INSERT, '\n')
-            ## Cost functions
-            text.insert(tk.INSERT, 'Cost function', "bullet1bold")
-            text.insert(tk.INSERT, ' (2D and 1D plots)\n\n')
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Set new values for the comb's parameters.\n\n")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def spanner_mode():
-            '''Create Spanner mode section'''
-            text.insert(tk.INSERT, '3. Spanner mode', "head")
-            text.insert(tk.INSERT, ' (interactive mode enabled on axes below)\n\n')
-            ## Periodogram
-            text.insert(tk.INSERT, 'Periodogram\n\n', "bullet1bold")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Horizontal span with the left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Select the observations to be fitted to the comb and determine the range of the P0 slider.\n\n")
-            text.insert(tk.INSERT, '\n')
-            ## Period spacing
-            text.insert(tk.INSERT, 'Period spacing\n\n', "bullet1bold")
-            text.insert(tk.INSERT, '• ', "bullet2")
-            text.insert(tk.INSERT, '`Vertical span with the left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Determine the range of the dP0 and modulo sliders.\n\n")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def sliders():
-            '''Create Sliders section'''
-            text.insert(tk.INSERT, '4. Sliders\n\n', "head")
-            ## P0
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'P0', "underline")
-            text.insert(tk.INSERT, ": Sets the comb's P0.\n\n")
-            ## dP0
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'dP0', "underline")
-            text.insert(tk.INSERT, ": Sets the comb's dP0.\n\n")
-            ## Sigma
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Sigma', "underline")
-            text.insert(tk.INSERT, ": Sets the comb's Sigma (slope).\n\n")
-            ## Echelle diagram
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Echelle ΔP', "underline")
-            text.insert(tk.INSERT, ': Sets the divisor of the x-axis of the echelle diagram.\n\n')
-            ## Amplitude threshold
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Amplitude threshold (%)', "underline")
-            text.insert(tk.INSERT, ": Sets the threshold for the periods' amplitude to be fitted.\n\n")
-            text.insert(tk.INSERT, '* Given a set of periods to fit, a value 0.2 will remove from the set periods with amplitude less than 20% of the maximum amplitude in the set.\n\n', "bullet2")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def buttons():
-            '''Create Buttons section'''
-            text.insert(tk.INSERT, '5. Buttons\n\n', "head")
-            ## Fit
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Fit', "underline")
-            text.insert(tk.INSERT, ": Fit the PSP (comb of vertical red lines) to the selected observations (black triangles and black vertical dashed lines).\n\n")
-            text.insert(tk.INSERT, '* Note that the fit is performed on the period space and not on the period spacing space. Therefore, missing modes will not impact the fit.\n\n', "bullet2")
-            text.insert(tk.INSERT, '* The fit uses the following bounded parameters by default (see variable `use_bounded_fit`):\n\n', "bullet2")
-            text.insert(tk.INSERT, '- P0 ∈ [PSP.P0 - Δ, PSP.P0 + Δ], where Δ = PSP.dP0/2\n\n', "bullet3")
-            text.insert(tk.INSERT, '- dP0 ∈ [PSP.dP0/2, 2*PSP.dP0]\n\n', "bullet3")
-            text.insert(tk.INSERT, '- Sigma ∈ [PSP.Sigma - Δ, PSP.Sigma + Δ], where Δ = 0.15\n\n', "bullet3")
-            ## Undo
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Undo', "underline")
-            text.insert(tk.INSERT, ": Set the PSP parameters to the values previous to the press of the Fit button.\n\n")
-            ## Save
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Save', "underline")
-            text.insert(tk.INSERT, ": Save fit results generated by the Fit button (see Saved files section below).\n\n")
-            text.insert(tk.INSERT, '* Note that fit results are deleted every time the user changes the PSP parameters or the observations to fit.\n\n', "bullet2")
-            ## Clicker ON/OFF
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Clicker ON/OFF', "underline")
-            text.insert(tk.INSERT, ': Enable/disable clicker mode (see Clicker mode section above).\n\n')
-            ## Spanner ON/OFF
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Spanner ON/OFF', "underline")
-            text.insert(tk.INSERT, ": Enable/disable spanner mode (see Spanner mode section above).\n\n")
-            text.insert(tk.INSERT, '* Given a set of periods to fit, a value 0.2 will remove from the set periods with amplitude less than 20% of the maximum amplitude in the set.\n\n', "bullet2")
-            ## ΔP line HIDE/SHOW
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'HIDE/SHOW ΔP line', "underline")
-            text.insert(tk.INSERT, ': Toggle the visibility of the dashed line on the period spacing plot.\n\n')
-            ## ΔP resolution HIDE/SHOW
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'HIDE/SHOW ΔP resolution', "underline")
-            text.insert(tk.INSERT, ': Toggle the visibility of the limit resolution curve on the period spacing plot.\n\n')
-            ## Help
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'Help', "underline")
-            text.insert(tk.INSERT, ': Display this help message.\n\n')
-            ## PSP
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, 'HIDE/SHOW PSP', "underline")
-            text.insert(tk.INSERT, ': Toggle the visibility of the PSP.\n\n')
-            text.insert(tk.INSERT, '\n\n')
-        
-        def saved_files():
-            '''Create Saved files section'''
-            text.insert(tk.INSERT, '6. Saved files\n\n', "head")
-            ## PDF file
-            text.insert(tk.INSERT, 'PDF file\n\n', "bullet1bold")
-            text.insert(tk.INSERT, 'Snapshot of the current state of the GUI.', "bullet2")
-            text.insert(tk.INSERT, '\n\n')
-            ## CSV file
-            text.insert(tk.INSERT, 'CSV file\n\n', "bullet1bold")
-            text.insert(tk.INSERT, 'Observations from the original input file (sorted by period) that were used to fit the PSP, plus the following columns:\n\n', "bullet2")
-            ### period_PSP
-            text.insert(tk.INSERT, '• ', "bullet3")
-            text.insert(tk.INSERT, 'period_PSP', "monospaced_underline")
-            text.insert(tk.INSERT, ": Periods of the linear PSP fitted to the observations.\n\n")
-            ### period_spacing_PSP
-            text.insert(tk.INSERT, '• ', "bullet3")
-            text.insert(tk.INSERT, 'period_spacing_PSP', "monospaced_underline")
-            text.insert(tk.INSERT, ": Period spacing of the linear PSP fitted to the observations.\n\n")
-            ### missing_mode_PSP
-            text.insert(tk.INSERT, '• ', "bullet3")
-            text.insert(tk.INSERT, 'missing_mode_PSP', "monospaced_underline")
-            text.insert(tk.INSERT, ": 1 if the PSP period is a missing mode (does not observations within the frequency resolution). 0 otherwise.\n\n")
-            ### matches_PSP
-            text.insert(tk.INSERT, '• ', "bullet3")
-            text.insert(tk.INSERT, 'matches_PSP', "monospaced_underline")
-            text.insert(tk.INSERT, ' : 1 if the observation is consistent with the fitted PSP within the frequency resolution. 0 otherwise.\n\n')
-            ### index_PSP
-            text.insert(tk.INSERT, '• ', "bullet3")
-            text.insert(tk.INSERT, 'index_PSP', "monospaced_underline")
-            text.insert(tk.INSERT, ' : Index of the PSP periods.\n\n')
-            # Notes
-            text.insert(tk.INSERT, '* Note that (1) if a PSP period is a missing mode or does not match any observation, it will be placed at the end of the CSV file', "bullet3")
-            text.insert(tk.INSERT, 'and (2) periods that are not fitted to the PSP (displayed in grey instead of black on the GUI) are not included in the CSV file.\n\n', "bullet3")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def mpl_shortcuts():
-            '''Create MPL shorcuts section'''
-            text.insert(tk.INSERT, '7. Matplotlib shortcuts available', "head")
-            text.insert(tk.INSERT, ' (see also top and beottom menus of the GUI window)\n\n')
-            ## h
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`h`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Go back to the home (initial) view of your plot.\n\n")
-            text.insert(tk.INSERT, '* Note that you may need to click somewhere in the figure after the keystroke to trigger the changes.\n\n', "bullet2")
-            ## Left arrow
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`Left arrow`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Undo Matplotlib's last action.\n\n")
-            text.insert(tk.INSERT, '* Note that you may need to click somewhere in the figure after the keystroke to trigger the changes.\n\n', "bullet2")
-            ## Right arrow
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`Right arrow`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Redo Matplotlib's last action.\n\n")
-            text.insert(tk.INSERT, '* Note that you may need to click somewhere in the figure after the keystroke to trigger the changes.\n\n', "bullet2")
-            ## p
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`p`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle pan/zoom mode.\n\n")
-            ### Pan/zoom
-            text.insert(tk.INSERT, '- ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Pan.\n\n")
-            ### Zoom
-            text.insert(tk.INSERT, '- ', "bullet2")
-            text.insert(tk.INSERT, '`Right mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Zoom. Notice that the zoom in the x and y directions are independent of each other.\n\n")
-            ## o
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`o`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle the box zoom mode.\n\n")
-            ### Box zoom in
-            text.insert(tk.INSERT, '- ', "bullet2")
-            text.insert(tk.INSERT, '`Left mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Zoom in.\n\n")
-            ### Box zoom out
-            text.insert(tk.INSERT, '- ', "bullet2")
-            text.insert(tk.INSERT, '`Right mouse button`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Zoom out.\n\n")
-            ## l
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`l`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle logarithmic scaling of the y axes.\n\n")
-            ## k
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`k`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle logarithmic scaling of the x axes.\n\n")
-            ## f
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`f`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle fullscreen mode.\n\n")
-            ## g
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`g`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Toggle grids.\n\n")
-            ## s
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`s`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Save the current figure (as a PNG, PDF, etc).\n\n")
-            ## q
-            text.insert(tk.INSERT, '• ', "bullet1")
-            text.insert(tk.INSERT, '`q`', "monospaced_underline")
-            text.insert(tk.INSERT, ": Quit.\n\n")
-            text.insert(tk.INSERT, '\n\n')
-        
-        def related_papers():
-            '''Create Related papers section'''
-            text.insert(tk.INSERT, '8. Related papers\n\n', "head")
-            ## Paper
-            text.insert(tk.INSERT, 'Garcia et al. 2022 (', "bullet1")
-            text.insert(tk.INSERT, 'https://doi.org/10.1051/0004-6361/202141926', "paper")
-            text.insert(tk.INSERT, ')')
-            ## Zenodo
-            text.insert(tk.INSERT, ' and examples within it (')
-            text.insert(tk.INSERT, 'https://zenodo.org/record/6320990', "zenodo")
-            text.insert(tk.INSERT, ').\n\n')
-            text.insert(tk.INSERT, '\n\n')
+        app = QApplication([])
 
-        ROOT = tk.Tk()
-        ROOT.title("Help")
-        # Set the window size and position
-        width = 1300
-        height = 500
-        xpos = 200
-        ypos = 100
-        ROOT.geometry(f"{width}x{height}+{xpos}+{ypos}")
-        # Create a text widget
-        text = tk.Text(ROOT, wrap=tk.WORD)
-        text.pack(expand=tk.YES, fill=tk.BOTH)
+        main_window = QMainWindow()
+        main_window.setWindowTitle("Help")
+        main_window.setGeometry(200, 100, 1300, 500)
 
-        create_tags()
-        legend()
-        clicker_mode()
-        spanner_mode()
-        sliders()
-        buttons()
-        saved_files()
-        mpl_shortcuts()
-        related_papers()
-        
-        text.config(bg='lightgray', font=("Arial", 18))
-        ROOT.mainloop()
-        
+        central_widget = QWidget()
+        main_window.setCentralWidget(central_widget)
+
+        layout = QVBoxLayout(central_widget)
+
+        text_browser = QTextBrowser()
+        text_browser.setOpenExternalLinks(True)
+        layout.addWidget(text_browser)
+
+        self.populate_help_content(text_browser)
+
+        main_window.show()
+        app.exec_()
+
+
+
     def undo(self, event):
         """Set the PSP parameters to the values previous to the press of the Fit button."""
         # Check if there is something to undo
@@ -1342,27 +1149,29 @@ class flossyGUI:
 
     def save(self, event):
         """Save results for the last press of the Fit button."""
-        # Create and hide the root window
-        ROOT = tk.Tk()
-        ROOT.withdraw()
         if self.fit is None:
-            showinfo("Save", "No fit to save.")
-            filename = None
-        else:
-            # Prompt user for file name
-            initialvalue = f'{self.ID}' if self.ID is not None else 'PSP'
-            filename = askstring(
-                title="Save",
-                prompt="File name without extension:",
-                initialvalue=initialvalue)
-        ROOT.destroy()
-        if filename is None:
+            QMessageBox.information(None, "Save", "No fit to save.")
             return
-        # Handle blank input
+
+        # Prompt user for file name
+        initialvalue = f'{self.ID}' if self.ID is not None else 'PSP'
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        filename, _ = QFileDialog.getSaveFileName(
+            None, 
+            "Save File", 
+            initialvalue, 
+            "All Files (*);;PDF Files (*.pdf);;CSV Files (*.csv)", 
+            options=options)
+
+        if not filename:
+            return
+
+        # Check for blank input
         if re.search("^[\s]*$", filename):
             print("Invalid file name.")
             return
-        
+
         # Save GUI snapshot as a PDF
         if self.secondary_fig is None or self.secondary_fig.number not in plt.get_fignums():
             self.main_fig.savefig(f'{filename}.pdf', bbox_inches='tight')
@@ -1390,7 +1199,7 @@ class flossyGUI:
             right_on='index_PSP'
         )
         df.to_csv(f'{filename}_all.csv', index=False)
-        
+
     def read_box_P0(self, text):
         """Emulate a P0 slider action by reading the value of a text box if `text` is numeric."""
         try:
@@ -2891,9 +2700,9 @@ def example():
         """
         
         # Prewhitened CSV file
-        pw_file = f'example_data/pw/pw_tic{TIC}.csv'
+        pw_file = f'flossy/example_data/pw/pw_tic{TIC}.csv'
         # Periodogram CSV file
-        pg_file = f'example_data/pg/pg_tic{TIC}.csv'
+        pg_file = f'flossy/example_data/pg/pg_tic{TIC}.csv'
         
         # Read the CSV files
         pw = pd.read_csv(pw_file) 
@@ -2952,4 +2761,6 @@ def example():
     # GUI.disconnect()
 
 if __name__ == '__main__':
+    app = QApplication(sys.argv)
     example()
+    sys.exit(app.exec_())
