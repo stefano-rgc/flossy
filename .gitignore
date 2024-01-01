@@ -3,6 +3,7 @@
 # but not these ones
 !.gitignore
 !README.md
+!example
 !flossy/flossy.py
 !flossy/example.py
 !setup.py
