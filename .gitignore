@@ -5,10 +5,12 @@
 !README.md
 !setup.py
 !flossy
+!flossy.gif
 
 # Ignore everything
 flossy/*
 # but not these ones
+!flossy/__init__.py
 !flossy/example.py
 !flossy/flossy.py
 # but not these ones

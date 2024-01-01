@@ -1,8 +1,10 @@
+import sys
 from types import SimpleNamespace
 import matplotlib.pyplot as plt
 import pandas as pd
 from astropy import units as u
-from .flossy import flossyGUI
+from flossy import flossyGUI
+from PyQt5.QtWidgets import QApplication
 
 def handle_input_data(TIC):
     """Custom function to handle the input data in the example folder
@@ -52,7 +54,7 @@ def handle_input_data(TIC):
     )
     return data
 
-def example():
+def flossyExample():
     data = handle_input_data(TIC=374944608)
     # Create the interface
     GUI = flossyGUI(
@@ -67,3 +69,8 @@ def example():
     # Run the interface using a context manager
     with GUI as flossy:
         plt.show()
+        
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    flossyExample()
+    sys.exit(app.exec_())

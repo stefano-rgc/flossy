@@ -2600,7 +2600,7 @@ class flossyGUI:
         self.axs.dp.legend()
         
 if __name__ == '__main__':
-    from . import example 
+    from example import flossyExample 
     app = QApplication(sys.argv)
-    example()
+    flossyExample()
     sys.exit(app.exec_())
