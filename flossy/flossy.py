@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
 import sys
-import pyautogui
-import webbrowser
-from numba.experimental import jitclass
-from numba import jit, njit, typed, float64, prange
+from numba import jit, typed, float64, prange
 from numba import types as nb_types
 import matplotlib.transforms as tx
 from matplotlib.ticker import MaxNLocator, LinearLocator
-from matplotlib.colors import BoundaryNorm
 from matplotlib import widgets
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from itertools import cycle
 from types import SimpleNamespace
 from enum import Enum
 from dataclasses import dataclass, field
@@ -20,18 +15,7 @@ import copy, re
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
-from scipy.optimize import BFGS
 from astropy import units as u
-
-import matplotlib as mpl
-# mpl.use('tkagg')
-# mpl.use('Qt5Agg')
-
-# import tkinter as tk
-# # from tkinter import simpledialog
-# from tkinter.simpledialog import askstring
-# from tkinter.messagebox import showinfo
-
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTextBrowser, QVBoxLayout, QWidget, QFileDialog, QMessageBox
 from PyQt5.QtCore import Qt
 
@@ -529,7 +513,6 @@ class flossyGUI:
             del self.max_dP0
             del self.min_Sigma
             del self.max_Sigma
-
         # Handle user input
         set_attributes_without_units()
         set_attributes_with_units()        
@@ -539,25 +522,19 @@ class flossyGUI:
         set_parameter_ranges()
         set_grid_resolution()
         set_grid_half_window()
-        
         # Create container for plot elements (e.g. lines, patches, etc)
         self.set_plot_namespace()
-
         # Estimate first linear PSP or comb
         self.guess_psp()
-
         # Estimate value for the echelle dp (so to plot later p % dp)
         self.echelle_dp = self.PSP.dP0
-
         # Interavtive variables
         self.initialize_interactive_variables()
-        
         # Creates the GUI
         self.create_main_GUI()
         self.format_main_GUI()
         self.hSpanSelector(self.axs.pg)
         self.vSpanSelector(self.axs.dp)
-
         # Make plots
         plot_pg = True if pg_periods is not None and pg_amplitudes is not None else False
         self.plot_data(plot_pg=plot_pg)
@@ -866,26 +843,21 @@ class flossyGUI:
             return
         if vmin == vmax:
             return
-
         # Get the periods within the selected range
         pw = self.pw.query('period>@vmin and period<@vmax')
         if not pw.period.size > 0:
             return
-        
         # Update the period window for the amplitude slider usage
         self.window_pmin = vmin 
         self.window_pmax = vmax
-        
         # Update period selection to the selected range
         i = (self.pw.period > vmin) & (self.pw.period < vmax)
         self.pw.selection = 0
         self.pw.loc[i, 'selection'] = 1
-        
         # Update data plots
         xlim = self.axs.pg.get_xlim()
         self.plot_data(echelle_keep_xlim_ylim=True)
         self.axs.pg.set_xlim(xlim)
-        
         # Update range of slider P0
         ax = self.axs.sliders.P0
         slider = self.sliders.P0
@@ -1106,28 +1078,19 @@ class flossyGUI:
 
     def help(self, event):
         """Shows a help message when the user clicks on the GUI help button.""" 
-
         app = QApplication([])
-
         main_window = QMainWindow()
         main_window.setWindowTitle("Help")
         main_window.setGeometry(200, 100, 1300, 500)
-
         central_widget = QWidget()
         main_window.setCentralWidget(central_widget)
-
         layout = QVBoxLayout(central_widget)
-
         text_browser = QTextBrowser()
         text_browser.setOpenExternalLinks(True)
         layout.addWidget(text_browser)
-
         self.populate_help_content(text_browser)
-
         main_window.show()
         app.exec_()
-
-
 
     def undo(self, event):
         """Set the PSP parameters to the values previous to the press of the Fit button."""
@@ -1152,7 +1115,6 @@ class flossyGUI:
         if self.fit is None:
             QMessageBox.information(None, "Save", "No fit to save.")
             return
-
         # Prompt user for file name
         initialvalue = f'{self.ID}' if self.ID is not None else 'PSP'
         options = QFileDialog.Options()
@@ -1163,15 +1125,12 @@ class flossyGUI:
             initialvalue, 
             "All Files (*);;PDF Files (*.pdf);;CSV Files (*.csv)", 
             options=options)
-
         if not filename:
             return
-
         # Check for blank input
         if re.search("^[\s]*$", filename):
             print("Invalid file name.")
             return
-
         # Save GUI snapshot as a PDF
         if self.secondary_fig is None or self.secondary_fig.number not in plt.get_fignums():
             self.main_fig.savefig(f'{filename}.pdf', bbox_inches='tight')
@@ -1179,7 +1138,6 @@ class flossyGUI:
             with PdfPages(f'{filename}.pdf') as pdf:
                 pdf.savefig(self.main_fig, bbox_inches='tight')
                 pdf.savefig(self.secondary_fig, bbox_inches='tight')
-        
         # Save PSP as a CSV
         observations = self.fit.fitted_pw.copy()
         observations.drop(columns=['selection'], inplace=True)
@@ -1228,7 +1186,6 @@ class flossyGUI:
         The vecinity is defined by the variables`grid_resolution` and
         `grid_half_window`.
         """
-            
         # Unpack
         PSP = self.PSP
         pw = self.pw
@@ -1238,13 +1195,11 @@ class flossyGUI:
         P0_half_window = self.grid_half_window.P0
         dP0_half_window = self.grid_half_window.dP0
         Sigma_half_window = self.grid_half_window.Sigma
-        
         # Grids
         grids = typed.Dict.empty(
             key_type=nb_types.unicode_type,
             value_type=float64[:]
         ) # Types for Numba
-        
         grids['P0'] = np.arange(
             PSP.P0 - P0_half_window,
             PSP.P0 + P0_half_window,
@@ -1260,26 +1215,22 @@ class flossyGUI:
             PSP.Sigma + Sigma_half_window,
             Sigma_resolution
         )
-        
         # Initialize exploration grid
         vecinity = np.empty([
             grids['P0'].size,
             grids['dP0'].size,
             grids['Sigma'].size
         ])
-
         # Observation to fit
         observations = typed.Dict.empty(
             key_type=nb_types.unicode_type,
             value_type=float64[:]
         ) # Types for Numba
-        
         observations['P'] = pw.query('selection==1').period.values
         observations['e_P'] = pw.query('selection==1').e_period.values
         observations['A'] = pw.query('selection==1').ampl.values
         observations['w'] = observations['A']/observations['A'].max()
         observations['w'] /= observations['w'].sum()  # normalize the weights
-
         compute_cost_function_in_the_grid(
             vecinity,
             grids,
@@ -1287,7 +1238,6 @@ class flossyGUI:
             PSP.nr,
             PSP.nl
         )
-            
         self.create_secondary_GUI()
         self.plot_vecinity(vecinity, grids)
         self.enable_mpl_connections_secondary_GUI()
@@ -1313,20 +1263,16 @@ class flossyGUI:
         errors using an approximation of the Hessian matrix. Compute residuals.
         Identify the observations that match the PSP model within the frequency
         resolution. Update the GUI."""
-        
         # Unpack
         axs = self.axs
         sliders = self.sliders
         PSP = self.PSP
         parameter_ranges = self.parameter_ranges
         pw = self.pw
-
         # Update previous PSP info
         self.previous_PSP = copy.deepcopy(PSP)
-        
         # Signal that changes are from fit button press (used later to display residuals)
         self.from_fit_button = True
-
         # Data to fit
         fitted_pw = pw.query('selection==1').copy()
         fitted_pw.reset_index(inplace=True, drop=True)
@@ -1335,14 +1281,11 @@ class flossyGUI:
         e_periods_obs = fitted_pw.e_period.values
         amplitude_obs = fitted_pw.ampl.values
         frequency_resolution = self.freq_resolution
-
         # weights
         weights_obs = amplitude_obs/amplitude_obs.max()
         weights_obs /= weights_obs.sum() # normalize
-
         # Minimization parameters
         x0 = [PSP.P0, PSP.dP0, PSP.Sigma]
-
         # Bounds P0
         if self.use_bounded_fit or self.use_bounded_fit_P0:
             delta = PSP.dP0/2
@@ -1369,11 +1312,10 @@ class flossyGUI:
             )
         else:
             Sigma_bounds = (None, None)
-        
         # Bounds and arguments for the fit
         bounds = [P0_bounds, dP0_bounds, Sigma_bounds]
         args = (PSP.nr, PSP.nl, periods_obs, weights_obs, e_periods_obs)
-                
+        
         def cost_function_alias(
             x,
             nr,
@@ -1391,7 +1333,6 @@ class flossyGUI:
 
         # Fit
         result = minimize(cost_function_alias, x0, args=args, bounds=bounds)
-
         # Get the approximation of the covariance matrix
         cov = result.hess_inv.todense()
         # Get the standard deviation of the parameters
@@ -1402,13 +1343,11 @@ class flossyGUI:
             dP0 = std[1]/result.x[1],
             Sigma = std[2]/result.x[2]
         )
-                
         # Update PSP parameters
         PSP.P0 = result.x[0]
         PSP.dP0 = result.x[1]
         PSP.Sigma = result.x[2]
         PSP.generatePSP()
-
         # Update sliders (plot automatically updated at each line below)
         self.update_slider(
             axs.sliders.P0,
@@ -1476,25 +1415,19 @@ class flossyGUI:
         fitted_PSP['missing_mode_PSP'] = fitted_PSP.index_PSP.apply(
             is_missing_mode, args=(fitted_pw.match_index_PSP.values,)
         )
-        
         # Needed for saving output to text file
-        
         self.fit = SimpleNamespace(
             fitted_pw = fitted_pw,
             fitted_PSP = fitted_PSP
         )
-        
         # Plot matches
         self.plot_matches()
-            
         # Compute residuals
         residuals = sum(np.abs(p-PSP.p).min() for p in periods_obs)
-        
         # Update boxes
         self.textBox_residuals.set_text(
             round(residuals,self.decimal_digits_to_display)
         )
-        
         # Update signal
         self.from_fit_button = False
         self.relative_err = None
@@ -1746,14 +1679,12 @@ class flossyGUI:
 
     def plot_PSP_in_echelle(self):
         """Overplot periods of the PSP (aka comb) in the echelle plot"""
-
         # Unpack variables
         plots = self.plots
         ax = self.axs.echelle
         p = self.PSP.p
         echelle_dp = self.echelle_dp
         P0 = self.PSP.P0
-        
         # Clear plot element if it exists
         pathCollections = [
             plots.PSP_echelle_scatter_1,
@@ -1765,13 +1696,11 @@ class flossyGUI:
         ]
         for pathCollection in pathCollections:
             self.clear_pathCollection(pathCollection)
-        
         # Overplot PSP periods with red circles
         prop = dict(color='red', s=30, zorder=3)
         plots.PSP_echelle_scatter_1 = ax.scatter(p % echelle_dp-echelle_dp, p, **prop)
         plots.PSP_echelle_scatter_2 = ax.scatter(p % echelle_dp+echelle_dp, p, **prop)
         plots.PSP_echelle_scatter_3 = ax.scatter(p % echelle_dp, p, **prop)
-
         # Over plot P0 with gold circle 
         if self.PSP.nr >= 1:
             prop = dict(color='gold', edgecolor='red', linewidths=0.5, s=30, zorder=3)
@@ -1945,7 +1874,6 @@ class flossyGUI:
         # Unpack
         axs = self.axs
         PSP = self.PSP
-                    
         # Plot P0 vs dP0
         Z = np.log(np.minimum.reduce(vals, axis=2))
         self.P0dP0_cbar = plot_2D_vecinity(
@@ -1963,7 +1891,6 @@ class flossyGUI:
             np.minimum.reduce(vals, axis=(1, 2)),
             PSP.P0
         )
-        
         # Plot dP0 vs Sigma
         Z = np.log(np.minimum.reduce(vals, axis=0))
         self.dP0Sigma_cbar = plot_2D_vecinity(
@@ -1981,7 +1908,6 @@ class flossyGUI:
             np.minimum.reduce(vals, axis=(0, 2)),
             PSP.dP0
         )
-
         # Plot Sigma vs P0
         Z = np.log(np.minimum.reduce(vals, axis=1))
         self.SigmaP0_cbar = plot_2D_vecinity(
@@ -2048,11 +1974,9 @@ class flossyGUI:
             axs.p.sharex(axs.pg)
             axs.pg.callbacks.connect('xlim_changed', update_echelle_ylim)
             axs.dp.callbacks.connect('xlim_changed', update_echelle_ylim)
-
             # Set title
             title = title if title is not None else ''
             axs.p.set_title(f'{title}', y=0.6)
-
             # Set labels
             axs.pg.set_ylabel('Amplitude (ppt)')
             axs.dp.set_xlabel('Period (d)')
@@ -2065,7 +1989,6 @@ class flossyGUI:
             axs.textBoxes.P0.set_xlabel('$P_0$ (d)')
             axs.textBoxes.dP0.set_xlabel('$\Delta P_0$ (d)')
             axs.textBoxes.Sigma.set_xlabel('$\Sigma$')
-            
             # Prune ticks in x axis
             axs.dp.xaxis.set_major_locator(MaxNLocator(prune='both', nbins=6))
             axs.echelle.xaxis.set_major_locator(MaxNLocator(prune='both', nbins=5))
@@ -2073,7 +1996,6 @@ class flossyGUI:
             # Prune ticks in y axis
             axs.pg.yaxis.set_major_locator(MaxNLocator(prune=None, nbins=4))
             axs.dp.yaxis.set_major_locator(MaxNLocator(prune='both', nbins=3))
-
             # Set visibility
             axs.allButtons.axis('off')
             axs.p.axis('off')
@@ -2082,7 +2004,6 @@ class flossyGUI:
                 ax.set_xticklabels([])
                 ax.set_xticks([])
                 ax.get_yaxis().set_visible(False)
-
             # Set ranges
             axs.p.set_ylim(0, 1)
 
@@ -2153,21 +2074,19 @@ class flossyGUI:
             for ax in axs.__dict__.values():
                 ax.spines['top'].set_visible(True)
                 ax.spines['right'].set_visible(True)
-
             # Remove vertical lines
             for slider in sliders.__dict__.values():
                 l1, l2 = slider.ax.get_lines()
                 l1.remove()
-
             # Amplitude
             vals = {
-                'label':'Amplitude threshold (%)',  # OK
-                'vmin':0.0,  # OK
-                'vmax':1.0,  # OK
-                'valfmt':'%1.2f',  # OK
-                'valinit':0,  # OK
-                'facecolor':'black',  # OK
-                'valstep':0.01  # From 1% to 100% # OK
+                'label':'Amplitude threshold (%)', 
+                'vmin':0.0, 
+                'vmax':1.0, 
+                'valfmt':'%1.2f', 
+                'valinit':0, 
+                'facecolor':'black', 
+                'valstep':0.01  # From 1% to 100%
             }
             set_slider_values(axs.ampl, sliders.ampl, **vals)
             # P0
@@ -2215,7 +2134,7 @@ class flossyGUI:
             }
             set_slider_values(axs.echelle_dP, sliders.echelle_dP, **vals)
 
-        format_axes(self.axs, self.echelle_dp, self.ID) #TODO: Better within the if statement?
+        format_axes(self.axs, self.echelle_dp, self.ID) #TODO?: Better within the if statement?
         format_sliders(self.axs.sliders, self.sliders, self.parameter_ranges, self.PSP)
 
     def format_secondary_GUI(self):
@@ -2680,87 +2599,8 @@ class flossyGUI:
         self.plots.dp_resolution = self.axs.dp.plot(p, dp, **prop, label='Limit resolution')
         self.axs.dp.legend()
         
-def example():
-    
-    def handle_input_data(TIC):
-        """Custom function to handle the input data in the example folder
-        (url). #TODO: fill in the url.
-        
-        It reads the prewhitened and periodogram CSV files and extracts the
-        relevant columns into numpy arrays, then it gives astropy units to each
-        array. Finally, it also generates the title to show in the GUI.
-        
-        Returns a SimpleNamespace object with the following attributes:
-            - pw_periods: array of periods from the prewhitened data
-            - pw_e_periods: array of errors on the periods from the prewhitened data
-            - pw_amplitudes: array of amplitudes from the prewhitened data
-            - pg_periods: array of periods from the periodogram data
-            - pg_amplitudes: array of amplitudes from the periodogram data
-            - title: title to show in the GUI
-        """
-        
-        # Prewhitened CSV file
-        pw_file = f'flossy/example_data/pw/pw_tic{TIC}.csv'
-        # Periodogram CSV file
-        pg_file = f'flossy/example_data/pg/pg_tic{TIC}.csv'
-        
-        # Read the CSV files
-        pw = pd.read_csv(pw_file) 
-        pg = pd.read_csv(pg_file)
-
-        # Extract relevant columns from the CSV files
-        pw_periods = 1/pw.frequency.values
-        pw_e_periods = pw.e_frequency.values * pw_periods**2
-        pw_amplitudes = pw.amp.values
-        pg_periods = 1/pg.freq.values
-        pg_amplitudes = pg.amp.values
-        
-        # Give astropy units to the just extracted columns 
-        pw_periods *= u.day
-        pw_e_periods *= u.day
-        pw_amplitudes = pw_amplitudes * 1e-3 * u.dimensionless_unscaled # ppt
-        pg_periods *= u.day
-        pg_amplitudes = pg_amplitudes * 1e-3 * u.dimensionless_unscaled # ppt
-        
-        # Give a title to the figure
-        title = f'TIC {TIC}'
-        
-        data = SimpleNamespace(
-            pw_periods=pw_periods,
-            pw_e_periods=pw_e_periods,
-            pw_amplitudes=pw_amplitudes,
-            pg_periods=pg_periods,
-            pg_amplitudes=pg_amplitudes,
-            title=title
-        )
-        
-        return data
-
-    from astropy import units as u
-
-    data = handle_input_data(TIC=374944608)
-
-    # Create the interface
-    GUI = flossyGUI(
-        pw_periods=data.pw_periods,
-        pw_e_periods=data.pw_e_periods,
-        pw_amplitudes=data.pw_amplitudes,
-        pg_periods=data.pg_periods,
-        pg_amplitudes=data.pg_amplitudes,
-        ID=data.title,
-        freq_resolution=1/u.yr
-    )
-    
-    # Run the interface using a context manager
-    with GUI as flossy:
-        plt.show()
-
-    # Run the interface without a context manager
-    # GUI.connect()
-    # plt.show()
-    # GUI.disconnect()
-
 if __name__ == '__main__':
+    from . import example 
     app = QApplication(sys.argv)
     example()
     sys.exit(app.exec_())
