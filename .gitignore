@@ -1,0 +1,22 @@
+# Ignore everything
+*
+# but not these ones
+!.gitignore
+!README.md
+!flossy/flossy.py
+!setup.py
+
+# but not these ones
+!flossy/example_data/pg/pg_tic38515566.csv
+!flossy/example_data/pg/pg_tic141479660.csv
+!flossy/example_data/pg/pg_tic349832567.csv
+!flossy/example_data/pg/pg_tic350144657.csv
+!flossy/example_data/pg/pg_tic374944608.csv
+!flossy/example_data/pg/pg_tic381950897.csv
+# but not these ones
+!flossy/example_data/pw/pw_tic38515566.csv
+!flossy/example_data/pw/pw_tic141479660.csv
+!flossy/example_data/pw/pw_tic349832567.csv
+!flossy/example_data/pw/pw_tic350144657.csv
+!flossy/example_data/pw/pw_tic374944608.csv
+!flossy/example_data/pw/pw_tic381950897.csv
