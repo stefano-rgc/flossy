@@ -6,6 +6,7 @@
 !setup.py
 !flossy
 !flossy.gif
+!flossy_environment.yml
 
 # Ignore everything
 flossy/*
