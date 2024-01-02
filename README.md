@@ -17,25 +17,59 @@ You can cover all requirements by installing the following virtual environment u
 conda env create -f flossy_environment.yml
 ```
 
-
-⮕ Alternatively, you can use `pip` to directly install the package along with all its dependences. For it, go to the directory containing the `setup.py` file and run:
-
-```
-pip install .
-```
-
-If you wish so, you can later uninstall it with:
+You can now activate the just created Conda environment using
 
 ```
-pip uninstall flossy
-``` 
+conda activate flossy-env
+```
 
-# Importing FLOSSY
-If you used `pip` to install the package, then `flossy` should be ready to import like any other Python module.
+If you wish so, you can later remove it with:
+
+conda env remove --name flossy-env
 
 If you just downloaded or cloned the repository, then you need to add its location to the environment variable used by Python to search for modules, so that you can have access to the `flossy` module regardless your location on your machine.
 
 # Run example
+
+The minimum sets of data to run FLOSSY are:
+
+1. prewhitened periods (e.g., `pw_periods`)
+2. prewhitened period errors (e.g., `pw_e_periods`)
+3. prewhitened amplitudes (e.g., `pw_amplitudes`)
+4. periodogram periods (e.g., `pg_periods`)
+5. periodogram amplitudes (e.g., `pg_amplitudes`)
+
+They **all** mush be of type `astropy.units.quantity.Quantity`. They are then feed to the GUI:
+
+```
+from astropy import units as u
+from flossy import flossyGUI
+
+GUI = flossyGUI(
+    pw_periods=pw_periods,
+    pw_e_periods=pw_e_periods,
+    pw_amplitudes=pw_amplitudes,
+    pg_periods=pg_periods,
+    pg_amplitudes=pg_amplitudes,
+    ID='TIC 374944608',
+    freq_resolution=1/u.yr
+)
+
+# Run the interface using a context manager
+with GUI as flossy:
+    app = QApplication([]) # Main windows to show dialogs, etc
+    plt.show() # Display the GUI
+    sys.exit(app.exec_()) # Close the app
+```
+
+To try an example, go the repo's root folder and run:
+
+```
+python flossy/example.py
+```
+
+You should be transported to a live example like the one shown in the GIF below.
+
 # Fit example
 
 ![demonstration](flossy.gif)
