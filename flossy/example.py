@@ -24,9 +24,9 @@ def handle_input_data(TIC):
     """
     
     # Prewhitened CSV file
-    pw_file = f'flossy/example_data/pw/pw_tic{TIC}.csv'
+    pw_file = f'example_data/pw/pw_tic{TIC}.csv'
     # Periodogram CSV file
-    pg_file = f'flossy/example_data/pg/pg_tic{TIC}.csv'
+    pg_file = f'example_data/pg/pg_tic{TIC}.csv'
     # Read the CSV files
     pw = pd.read_csv(pw_file) 
     pg = pd.read_csv(pg_file)
@@ -68,9 +68,9 @@ def flossyExample():
     )
     # Run the interface using a context manager
     with GUI as flossy:
+        app = QApplication([])
         plt.show()
+        sys.exit(app.exec_())
         
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
     flossyExample()
-    sys.exit(app.exec_())
