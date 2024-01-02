@@ -11,5 +11,3 @@ dependencies:
   - astropy
   - pyqt=5  # For PyQt5
   - pip
-  - pip:
-      - types-SimpleNamespace  # For SimpleNamespace if needed

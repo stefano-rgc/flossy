@@ -24,9 +24,9 @@ def handle_input_data(TIC):
     """
     
     # Prewhitened CSV file
-    pw_file = f'example_data/pw/pw_tic{TIC}.csv'
+    pw_file = f'flossy/example_data/pw/pw_tic{TIC}.csv'
     # Periodogram CSV file
-    pg_file = f'example_data/pg/pg_tic{TIC}.csv'
+    pg_file = f'flossy/example_data/pg/pg_tic{TIC}.csv'
     # Read the CSV files
     pw = pd.read_csv(pw_file) 
     pg = pd.read_csv(pg_file)
