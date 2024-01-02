@@ -27,6 +27,21 @@ If you wish so, you can later remove it with:
 
 conda env remove --name flossy-env
 
+⮕ Alternatively, you can use `pip` to directly install the package along with all its dependences. For it, go to the directory containing the `setup.py` file and run:
+
+```
+pip install .
+```
+
+If you wish so, you can later uninstall it with:
+
+```
+pip uninstall flossy
+``` 
+
+# Importing FLOSSY
+If you used `pip` to install the package, then `flossy` should be ready to import like any other Python module.
+
 If you just downloaded or cloned the repository, then you need to add its location to the environment variable used by Python to search for modules, so that you can have access to the `flossy` module regardless your location on your machine.
 
 # Run example
@@ -39,7 +54,7 @@ The minimum sets of data to run FLOSSY are:
 4. periodogram periods (e.g., `pg_periods`)
 5. periodogram amplitudes (e.g., `pg_amplitudes`)
 
-They **all** mush be of type `astropy.units.quantity.Quantity`. They are then feed to the GUI:
+They **all** must be of type `astropy.units.quantity.Quantity`. They are then fed to the GUI:
 
 ```
 from astropy import units as u
@@ -68,7 +83,7 @@ To try an example, go the repo's root folder and run:
 python flossy/example.py
 ```
 
-You should be transported to a live example like the one shown in the GIF below.
+You should be transported to a live example like the one shown in the GIF below. Have fun!
 
 # Fit example
 
